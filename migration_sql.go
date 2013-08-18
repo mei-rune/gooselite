@@ -1,12 +1,34 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"database/sql"
 	"io/ioutil"
 	"log"
 	"path/filepath"
 	"strings"
 )
+
+func splitSQLScript(script string) (stmts []string) {
+	scaner := bufio.NewScanner(bytes.NewBufferString(script))
+	scaner.Split(bufio.ScanLines)
+
+	var stmt string
+	for scaner.Scan() {
+		var line = scaner.Text()
+		stmt += line
+		stmt += "\r\n"
+		if strings.HasSuffix(strings.TrimSpace(line), ";") {
+			stmts = append(stmts, stmt)
+			stmt = ""
+		}
+	}
+	if 0 != len(stmt) {
+		stmts = append(stmts, stmt)
+	}
+	return stmts
+}
 
 // Run a migration specified in raw SQL.
 //
@@ -39,7 +61,7 @@ func runSQLMigration(conf *DBConf, db *sql.DB, script string, v int64, direction
 
 	// find each statement, checking annotations for up/down direction
 	// and execute each of them in the current transaction
-	stmts := strings.Split(string(f), ";")
+	stmts := splitSQLScript(string(f))
 
 	for _, query := range stmts {
 
