@@ -1,0 +1,18 @@
+
+test:
+    driver: mysql
+    open: liam:aaaa@tcp(localhost:3306)/tester?autocommit=true&parseTime=true
+
+development:
+    driver: mysql
+    open: liam:aaaa@tcp(localhost:3306)/tester?autocommit=true&parseTime=true
+
+production:
+    driver: mysql
+    open: liam:aaaa@tcp(localhost:3306)/tester?autocommit=true&parseTime=true
+
+customimport:
+    driver: customdriver
+    open: customdriver open
+    import: github.com/custom/driver
+    dialect: mysql

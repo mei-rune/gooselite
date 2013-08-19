@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"database/sql"
@@ -7,20 +7,23 @@ import (
 // SqlDialect abstracts the details of specific SQL dialects
 // for goose's few SQL specific statements
 type SqlDialect interface {
-	createVersionTableSql() string // sql string to create the goose_db_version table
-	insertVersionSql() string      // sql string to insert the initial version table row
-	dbVersionQuery(db *sql.DB) (*sql.Rows, error)
+	CreateVersionTableSql() string // sql string to create the goose_db_version table
+	InsertVersionSql() string      // sql string to insert the initial version table row
+	DbVersionQuery(db *sql.DB) (*sql.Rows, error)
 }
+
+type CreateSqlDialect func() SqlDialect
+
+var (
+	SqlDialects = map[string]CreateSqlDialect{"postgres": func() SqlDialect { return &PostgresDialect{} },
+		"mysql": func() SqlDialect { return &MySqlDialect{} }}
+)
 
 // drivers that we don't know about can ask for a dialect by name
 func DialectByName(d string) SqlDialect {
-	switch d {
-	case "postgres":
-		return &PostgresDialect{}
-	case "mysql":
-		return &MySqlDialect{}
+	if createSqlDialect, ok := SqlDialects[d]; ok {
+		return createSqlDialect()
 	}
-
 	return nil
 }
 
@@ -30,7 +33,7 @@ func DialectByName(d string) SqlDialect {
 
 type PostgresDialect struct{}
 
-func (pg *PostgresDialect) createVersionTableSql() string {
+func (pg *PostgresDialect) CreateVersionTableSql() string {
 	return `CREATE TABLE goose_db_version (
             	id serial NOT NULL,
                 version_id bigint NOT NULL,
@@ -40,11 +43,11 @@ func (pg *PostgresDialect) createVersionTableSql() string {
             );`
 }
 
-func (pg *PostgresDialect) insertVersionSql() string {
+func (pg *PostgresDialect) InsertVersionSql() string {
 	return "INSERT INTO goose_db_version (version_id, is_applied) VALUES ($1, $2);"
 }
 
-func (pg *PostgresDialect) dbVersionQuery(db *sql.DB) (*sql.Rows, error) {
+func (pg *PostgresDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 	rows, err := db.Query("SELECT version_id, is_applied from goose_db_version ORDER BY id DESC")
 
 	// XXX: check for postgres specific error indicating the table doesn't exist.
@@ -63,7 +66,7 @@ func (pg *PostgresDialect) dbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 
 type MySqlDialect struct{}
 
-func (m *MySqlDialect) createVersionTableSql() string {
+func (m *MySqlDialect) CreateVersionTableSql() string {
 	return `CREATE TABLE goose_db_version (
                 id serial NOT NULL,
                 version_id bigint NOT NULL,
@@ -73,11 +76,11 @@ func (m *MySqlDialect) createVersionTableSql() string {
             );`
 }
 
-func (m *MySqlDialect) insertVersionSql() string {
+func (m *MySqlDialect) InsertVersionSql() string {
 	return "INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?);"
 }
 
-func (m *MySqlDialect) dbVersionQuery(db *sql.DB) (*sql.Rows, error) {
+func (m *MySqlDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 	rows, err := db.Query("SELECT version_id, is_applied from goose_db_version ORDER BY id DESC")
 
 	// XXX: check for mysql specific error indicating the table doesn't exist.

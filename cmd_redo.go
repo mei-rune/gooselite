@@ -1,4 +1,4 @@
-package main
+package goose
 
 import "log"
 
@@ -15,15 +15,15 @@ func redoRun(cmd *Command, args ...string) {
 		log.Fatal(err)
 	}
 
-	target := getDBVersion(conf)
-	_, earliest := getPreviousVersion(conf.MigrationsDir, target)
+	target := GetDBVersion(conf)
+	_, earliest := GetPreviousVersion(conf.MigrationsDir, target)
 
 	downRun(cmd, args...)
 	if target == 0 {
 		log.Printf("Updating from %s to %s\n", target, earliest)
 		target = earliest
 	}
-	runMigrations(conf, conf.MigrationsDir, target)
+	RunMigrations(conf, conf.MigrationsDir, target)
 }
 
 func init() {

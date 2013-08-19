@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"bufio"
@@ -106,7 +106,7 @@ func finalizeMigration(conf *DBConf, txn *sql.Tx, direction bool, v int64) error
 
 	// XXX: drop goose_db_version table on some minimum version number?
 	d := conf.Driver.Dialect
-	if _, err := txn.Exec(d.insertVersionSql(), v, direction); err != nil {
+	if _, err := txn.Exec(d.InsertVersionSql(), v, direction); err != nil {
 		txn.Rollback()
 		return err
 	}

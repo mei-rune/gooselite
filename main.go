@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"flag"
@@ -8,28 +8,22 @@ import (
 	"text/template"
 )
 
-var commands = []*Command{
-	upCmd,
-	downCmd,
-	redoCmd,
-	statusCmd,
-	createCmd,
-}
+var GooseFlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
-func main() {
+func Run(arguments ...string) {
 
-	flag.Usage = usage
-	flag.Parse()
+	GooseFlagSet.Usage = usage
+	GooseFlagSet.Parse(arguments)
 
-	args := flag.Args()
+	args := GooseFlagSet.Args()
 	if len(args) == 0 || args[0] == "-h" {
-		flag.Usage()
+		GooseFlagSet.Usage()
 		return
 	}
 
 	var cmd *Command
 	name := args[0]
-	for _, c := range commands {
+	for _, c := range Commands {
 		if strings.HasPrefix(c.Name, name) {
 			cmd = c
 			break
@@ -38,7 +32,7 @@ func main() {
 
 	if cmd == nil {
 		fmt.Printf("error: unknown command %q\n", name)
-		flag.Usage()
+		GooseFlagSet.Usage()
 		os.Exit(1)
 	}
 
@@ -46,7 +40,9 @@ func main() {
 }
 
 func usage() {
-	usageTmpl.Execute(os.Stdout, commands)
+	usageTmpl.Execute(os.Stdout, Commands)
+	fmt.Println("\noptions:")
+	GooseFlagSet.PrintDefaults()
 }
 
 var usageTmpl = template.Must(template.New("usage").Parse(

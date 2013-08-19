@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"database/sql"
@@ -42,7 +42,7 @@ type MigrationMap struct {
 	Direction  bool           // sort direction: true -> Up, false -> Down
 }
 
-func runMigrations(conf *DBConf, migrationsDir string, target int64) {
+func RunMigrations(conf *DBConf, migrationsDir string, target int64) {
 
 	db, err := sql.Open(conf.Driver.Name, conf.Driver.OpenStr)
 	if err != nil {
@@ -194,7 +194,7 @@ func numericComponent(name string) (int64, error) {
 // Create and initialize the DB version table if it doesn't exist.
 func ensureDBVersion(conf *DBConf, db *sql.DB) (int64, error) {
 
-	rows, err := conf.Driver.Dialect.dbVersionQuery(db)
+	rows, err := conf.Driver.Dialect.DbVersionQuery(db)
 	if err != nil {
 
 		if err == ErrTableDoesNotExist {
@@ -250,14 +250,14 @@ func createVersionTable(conf *DBConf, db *sql.DB) error {
 
 	d := conf.Driver.Dialect
 
-	if _, err := txn.Exec(d.createVersionTableSql()); err != nil {
+	if _, err := txn.Exec(d.CreateVersionTableSql()); err != nil {
 		txn.Rollback()
 		return err
 	}
 
 	version := 0
 	applied := true
-	if _, err := txn.Exec(d.insertVersionSql(), version, applied); err != nil {
+	if _, err := txn.Exec(d.InsertVersionSql(), version, applied); err != nil {
 		txn.Rollback()
 		return err
 	}
@@ -267,7 +267,7 @@ func createVersionTable(conf *DBConf, db *sql.DB) error {
 
 // wrapper for ensureDBVersion for callers that don't already have
 // their own DB instance
-func getDBVersion(conf *DBConf) int64 {
+func GetDBVersion(conf *DBConf) int64 {
 
 	db, err := sql.Open(conf.Driver.Name, conf.Driver.OpenStr)
 	if err != nil {
