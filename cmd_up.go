@@ -20,13 +20,13 @@ func upRun(cmd *Command, args ...string) {
 		log.Fatal(err)
 	}
 
-	target := mostRecentVersionAvailable(conf.MigrationsDir)
+	target := MostRecentVersionAvailable(conf.MigrationsDir)
 	RunMigrations(conf, conf.MigrationsDir, target)
 }
 
 // helper to identify the most recent possible version
 // within a folder of migration scripts
-func mostRecentVersionAvailable(dirpath string) int64 {
+func MostRecentVersionAvailable(dirpath string) int64 {
 
 	mostRecent := int64(-1)
 

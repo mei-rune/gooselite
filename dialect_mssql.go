@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"database/sql"
@@ -10,7 +10,7 @@ import (
 
 type MSSQLDialect struct{}
 
-func (pg *MSSQLDialect) createVersionTableSql() string {
+func (pg *MSSQLDialect) CreateVersionTableSql() string {
 	return `CREATE TABLE goose_db_version (
             	  id INT IDENTITY(1,1) NOT NULL,
                 version_id bigint NOT NULL,
@@ -20,11 +20,11 @@ func (pg *MSSQLDialect) createVersionTableSql() string {
             );`
 }
 
-func (pg *MSSQLDialect) insertVersionSql() string {
+func (pg *MSSQLDialect) InsertVersionSql() string {
 	return "INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?);"
 }
 
-func (pg *MSSQLDialect) dbVersionQuery(db *sql.DB) (*sql.Rows, error) {
+func (pg *MSSQLDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 	rows, err := db.Query("SELECT version_id, is_applied from goose_db_version ORDER BY id DESC")
 
 	// XXX: check for postgres specific error indicating the table doesn't exist.
@@ -35,4 +35,10 @@ func (pg *MSSQLDialect) dbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 	}
 
 	return rows, err
+}
+
+func init() {
+	SqlDialects["mssql"] = func() SqlDialect {
+		return &MySqlDialect{}
+	}
 }
