@@ -105,6 +105,11 @@ func NewDBDriver(name, open string) DBDriver {
 	case "mymysql":
 		d.Import = "github.com/ziutek/mymysql/godrv"
 		d.Dialect = &MySqlDialect{}
+
+	case "mssql":
+		d.Name = "odbc"
+		d.Import = "code.google.com/p/odbc"
+		d.Dialect = &MSSQLDialect{}
 	}
 
 	return d
