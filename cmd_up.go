@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"log"
@@ -21,7 +21,7 @@ func upRun(cmd *Command, args ...string) {
 	}
 
 	target := mostRecentVersionAvailable(conf.MigrationsDir)
-	runMigrations(conf, conf.MigrationsDir, target)
+	RunMigrations(conf, conf.MigrationsDir, target)
 }
 
 // helper to identify the most recent possible version

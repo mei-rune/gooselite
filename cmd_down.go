@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"fmt"
@@ -21,8 +21,8 @@ func downRun(cmd *Command, args ...string) {
 		log.Fatal(err)
 	}
 
-	current := getDBVersion(conf)
-	previous, earliest := getPreviousVersion(conf.MigrationsDir, current)
+	current := GetDBVersion(conf)
+	previous, earliest := GetPreviousVersion(conf.MigrationsDir, current)
 
 	if current == 0 {
 		fmt.Println("db is empty, can't go down.")
@@ -35,10 +35,10 @@ func downRun(cmd *Command, args ...string) {
 		previous = 0
 	}
 
-	runMigrations(conf, conf.MigrationsDir, previous)
+	RunMigrations(conf, conf.MigrationsDir, previous)
 }
 
-func getPreviousVersion(dirpath string, version int64) (previous, earliest int64) {
+func GetPreviousVersion(dirpath string, version int64) (previous, earliest int64) {
 
 	previous = -1
 	earliest = (1 << 63) - 1

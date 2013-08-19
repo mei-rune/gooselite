@@ -1,4 +1,4 @@
-package main
+package goose
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ func runGoMigration(conf *DBConf, path string, version int64, direction bool) er
 		Driver:     conf.Driver,
 		Direction:  direction,
 		Func:       fmt.Sprintf("%v_%v", directionStr, version),
-		InsertStmt: conf.Driver.Dialect.insertVersionSql(),
+		InsertStmt: conf.Driver.Dialect.InsertVersionSql(),
 	}
 	main, e := writeTemplateToFile(filepath.Join(d, "goose_main.go"), goMigrationTmpl, td)
 	if e != nil {

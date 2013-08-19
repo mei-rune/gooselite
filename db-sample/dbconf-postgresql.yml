@@ -1,0 +1,18 @@
+
+test:
+    driver: postgres
+    open: host=127.0.0.1 dbname=tester user=tpt password=extreme sslmode=disable
+
+development:
+    driver: postgres
+    open: host=127.0.0.1 dbname=tester user=tpt password=extreme sslmode=disable
+
+production:
+    driver: postgres
+    open: host=127.0.0.1 dbname=tester user=tpt password=extreme sslmode=disable
+
+customimport:
+    driver: customdriver
+    open: customdriver open
+    import: github.com/custom/driver
+    dialect: mysql
