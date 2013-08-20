@@ -39,6 +39,6 @@ func (pg *MSSQLDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 
 func init() {
 	SqlDialects["mssql"] = func() SqlDialect {
-		return &MySqlDialect{}
+		return &MSSQLDialect{}
 	}
 }
