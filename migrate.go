@@ -203,6 +203,7 @@ func ensureDBVersion(conf *DBConf, db *sql.DB) (int64, error) {
 
 		return 0, err
 	}
+	defer rows.Close()
 
 	// The most recent record for each migration specifies
 	// whether it has been applied or rolled back.
