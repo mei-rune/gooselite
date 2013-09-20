@@ -137,7 +137,17 @@ func createMyMySqlDriver(name, open string) DBDriver {
 		Dialect: DialectByName("mysql")}
 }
 
+func createSqlite3Driver(name, open string) DBDriver {
+	return DBDriver{
+		Name:    name,
+		OpenStr: open,
+		Import:  "github.com/mattn/go-sqlite3",
+		Dialect: DialectByName("sqlite"),
+	}
+}
+
 func init() {
 	DBDrivers["postgres"] = createPostgresDriver
 	DBDrivers["mymysql"] = createMyMySqlDriver
+	DBDrivers["sqlite3"] = createSqlite3Driver
 }
