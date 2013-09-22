@@ -16,7 +16,8 @@ type CreateSqlDialect func() SqlDialect
 
 var (
 	SqlDialects = map[string]CreateSqlDialect{"postgres": func() SqlDialect { return &PostgresDialect{} },
-		"mysql": func() SqlDialect { return &MySqlDialect{} }}
+		"mysql":  func() SqlDialect { return &MySqlDialect{} },
+		"sqlite": func() SqlDialect { return &SqliteDialect{} }}
 )
 
 // drivers that we don't know about can ask for a dialect by name
@@ -81,6 +82,38 @@ func (m *MySqlDialect) InsertVersionSql() string {
 }
 
 func (m *MySqlDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
+	rows, err := db.Query("SELECT version_id, is_applied from goose_db_version ORDER BY id DESC")
+
+	// XXX: check for mysql specific error indicating the table doesn't exist.
+	// for now, assume any error is because the table doesn't exist,
+	// in which case we'll try to create it.
+	if err != nil {
+		return nil, ErrTableDoesNotExist
+	}
+
+	return rows, err
+}
+
+////////////////////////////
+// Sqlite
+////////////////////////////
+
+type SqliteDialect struct{}
+
+func (m *SqliteDialect) CreateVersionTableSql() string {
+	return `CREATE TABLE goose_db_version (
+                id integer primary key,
+                version_id bigint NOT NULL,
+                is_applied boolean NOT NULL,
+                tstamp timestamp NULL default CURRENT_TIMESTAMP
+            );`
+}
+
+func (m *SqliteDialect) InsertVersionSql() string {
+	return "INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?);"
+}
+
+func (m *SqliteDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 	rows, err := db.Query("SELECT version_id, is_applied from goose_db_version ORDER BY id DESC")
 
 	// XXX: check for mysql specific error indicating the table doesn't exist.
