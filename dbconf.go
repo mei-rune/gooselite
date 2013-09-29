@@ -29,8 +29,14 @@ type DBConf struct {
 	Driver        DBDriver
 }
 
+var ReadDbConf func() (*DBConf, error)
+
 // default helper - makes a DBConf from the dbPath and dbEnv flags
 func NewDBConf() (*DBConf, error) {
+	if nil != ReadDbConf {
+		return ReadDbConf()
+	}
+
 	return newDBConfDetails(*dbPath, *dbEnv)
 }
 
