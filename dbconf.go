@@ -10,9 +10,9 @@ import (
 )
 
 // global options. available to any subcommands.
-var dbPath = GooseFlagSet.String("path", "db", "folder containing db info")
-var dbEnv = GooseFlagSet.String("env", "development", "which DB environment to use")
-var tag = GooseFlagSet.String("tag", "", "which config path and migrations path to use")
+var dbPath *string
+var dbEnv *string
+var dbTag *string
 
 // DBDriver encapsulates the info needed to work with
 // a specific database driver
@@ -42,10 +42,9 @@ func NewDBConf() (*DBConf, error) {
 
 // extract configuration details from the given file
 func newDBConfDetails(p, env string) (*DBConf, error) {
-
 	cfgFile := filepath.Join(p, "dbconf.yml")
-	if 0 != len(*tag) {
-		file := filepath.Join(p, "dbconf-"+*tag+".yml")
+	if 0 != len(*dbTag) {
+		file := filepath.Join(p, "dbconf-"+*dbTag+".yml")
 		if st, e := os.Stat(file); nil == e && nil != st && !st.IsDir() {
 			cfgFile = file
 		}
@@ -93,8 +92,8 @@ func newDBConfDetails(p, env string) (*DBConf, error) {
 	}
 
 	migrations_path := filepath.Join(p, "migrations")
-	if 0 != len(*tag) {
-		pa := filepath.Join(p, "migrations-"+*tag)
+	if 0 != len(*dbTag) {
+		pa := filepath.Join(p, "migrations-"+*dbTag)
 		if st, e := os.Stat(pa); nil == e && nil != st && st.IsDir() {
 			migrations_path = pa
 		}

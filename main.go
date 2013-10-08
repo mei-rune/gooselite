@@ -11,6 +11,11 @@ import (
 var GooseFlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
 func Run(arguments ...string) {
+	if nil == ReadDbConf && nil == GooseFlagSet.Lookup("path") {
+		dbPath = GooseFlagSet.String("path", "db", "folder containing db info")
+		dbEnv = GooseFlagSet.String("env", "development", "which DB environment to use")
+		dbTag = GooseFlagSet.String("tag", "", "which config path and migrations path to use")
+	}
 
 	GooseFlagSet.Usage = usage
 	GooseFlagSet.Parse(arguments)
