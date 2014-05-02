@@ -25,11 +25,3 @@ func (c *Command) Exec(args []string) {
 	c.Flag.Parse(args)
 	c.Run(c, c.Flag.Args()...)
 }
-
-var Commands = []*Command{
-	upCmd,
-	downCmd,
-	redoCmd,
-	statusCmd,
-	createCmd,
-}

@@ -17,7 +17,7 @@ type CreateSqlDialect func() SqlDialect
 var (
 	SqlDialects = map[string]CreateSqlDialect{"postgres": func() SqlDialect { return &PostgresDialect{} },
 		"mysql":  func() SqlDialect { return &MySqlDialect{} },
-		"sqlite": func() SqlDialect { return &SqliteDialect{} }}
+		"sqlite": func() SqlDialect { return &Sqlite3Dialect{} }}
 )
 
 // drivers that we don't know about can ask for a dialect by name
@@ -98,22 +98,22 @@ func (m *MySqlDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 // Sqlite
 ////////////////////////////
 
-type SqliteDialect struct{}
+type Sqlite3Dialect struct{}
 
-func (m *SqliteDialect) CreateVersionTableSql() string {
+func (m *Sqlite3Dialect) CreateVersionTableSql() string {
 	return `CREATE TABLE goose_db_version (
-                id integer primary key,
-                version_id bigint NOT NULL,
-                is_applied boolean NOT NULL,
-                tstamp timestamp NULL default CURRENT_TIMESTAMP
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                version_id INTEGER NOT NULL,
+                is_applied INTEGER NOT NULL,
+                tstamp TIMESTAMP DEFAULT (datetime('now'))
             );`
 }
 
-func (m *SqliteDialect) InsertVersionSql() string {
+func (m *Sqlite3Dialect) InsertVersionSql() string {
 	return "INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?);"
 }
 
-func (m *SqliteDialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
+func (m *Sqlite3Dialect) DbVersionQuery(db *sql.DB) (*sql.Rows, error) {
 	rows, err := db.Query("SELECT version_id, is_applied from goose_db_version ORDER BY id DESC")
 
 	// XXX: check for mysql specific error indicating the table doesn't exist.

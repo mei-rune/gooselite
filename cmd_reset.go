@@ -9,24 +9,30 @@ var resetCmd = &Command{
 	Usage:   "",
 	Summary: "Roll back the version to 0 and Migrate the DB to the most recent version available",
 	Help:    `reset extended help here...`,
+	Run:     resetRun,
 }
 
 func resetRun(cmd *Command, args ...string) {
-	conf, err := NewDBConf()
+	conf, err := dbConfFromFlags()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	current := GetDBVersion(conf)
+	current, err := GetDBVersion(conf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if current != 0 {
 		RunMigrations(conf, conf.MigrationsDir, 0)
 	}
 
-	target := MostRecentVersionAvailable(conf.MigrationsDir)
-	RunMigrations(conf, conf.MigrationsDir, target)
-}
-
-func init() {
-	resetCmd.Run = resetRun
-	Commands = append(Commands, resetCmd)
+	target, err := GetMostRecentDBVersion(conf.MigrationsDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = RunMigrations(conf, conf.MigrationsDir, target)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

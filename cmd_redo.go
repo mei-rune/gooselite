@@ -7,25 +7,30 @@ var redoCmd = &Command{
 	Usage:   "",
 	Summary: "Re-run the latest migration",
 	Help:    `redo extended help here...`,
+	Run:     redoRun,
 }
 
 func redoRun(cmd *Command, args ...string) {
-	conf, err := NewDBConf()
+	conf, err := dbConfFromFlags()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	target := GetDBVersion(conf)
-	_, earliest := GetPreviousVersion(conf.MigrationsDir, target)
-
-	downRun(cmd, args...)
-	if target == 0 {
-		log.Printf("Updating from %s to %s\n", target, earliest)
-		target = earliest
+	current, err := GetDBVersion(conf)
+	if err != nil {
+		log.Fatal(err)
 	}
-	RunMigrations(conf, conf.MigrationsDir, target)
-}
 
-func init() {
-	redoCmd.Run = redoRun
+	previous, err := GetPreviousDBVersion(conf.MigrationsDir, current)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := RunMigrations(conf, conf.MigrationsDir, previous); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := RunMigrations(conf, conf.MigrationsDir, current); err != nil {
+		log.Fatal(err)
+	}
 }

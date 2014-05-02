@@ -1,10 +1,7 @@
 package goose
 
 import (
-	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 )
 
 var downCmd = &Command{
@@ -12,54 +9,27 @@ var downCmd = &Command{
 	Usage:   "",
 	Summary: "Roll back the version by 1",
 	Help:    `down extended help here...`,
+	Run:     downRun,
 }
 
 func downRun(cmd *Command, args ...string) {
 
-	conf, err := NewDBConf()
+	conf, err := dbConfFromFlags()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	current := GetDBVersion(conf)
-	previous, earliest := GetPreviousVersion(conf.MigrationsDir, current)
-
-	if current == 0 {
-		fmt.Println("db is empty, can't go down.")
-		return
+	current, err := GetDBVersion(conf)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// if we're at the earliest version, indicate that the
-	// only available step is to roll back to an empty database
-	if current == earliest {
-		previous = 0
+	previous, err := GetPreviousDBVersion(conf.MigrationsDir, current)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	RunMigrations(conf, conf.MigrationsDir, previous)
-}
-
-func GetPreviousVersion(dirpath string, version int64) (previous, earliest int64) {
-
-	previous = -1
-	earliest = (1 << 63) - 1
-
-	filepath.Walk(dirpath, func(name string, info os.FileInfo, err error) error {
-
-		if v, e := numericComponent(name); e == nil {
-			if v > previous && v < version {
-				previous = v
-			}
-			if v < earliest {
-				earliest = v
-			}
-		}
-
-		return nil
-	})
-
-	return previous, earliest
-}
-
-func init() {
-	downCmd.Run = downRun
+	if err = RunMigrations(conf, conf.MigrationsDir, previous); err != nil {
+		log.Fatal(err)
+	}
 }

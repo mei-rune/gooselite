@@ -9,11 +9,6 @@ import (
 	"path/filepath"
 )
 
-// global options. available to any subcommands.
-var dbPath *string
-var dbEnv *string
-var dbTag *string
-
 // DBDriver encapsulates the info needed to work with
 // a specific database driver
 type DBDriver struct {
@@ -29,22 +24,11 @@ type DBConf struct {
 	Driver        DBDriver
 }
 
-var ReadDbConf func() (*DBConf, error)
-
-// default helper - makes a DBConf from the dbPath and dbEnv flags
-func NewDBConf() (*DBConf, error) {
-	if nil != ReadDbConf {
-		return ReadDbConf()
-	}
-
-	return newDBConfDetails(*dbPath, *dbEnv)
-}
-
 // extract configuration details from the given file
-func newDBConfDetails(p, env string) (*DBConf, error) {
-	cfgFile := filepath.Join(p, "dbconf.yml")
-	if 0 != len(*dbTag) {
-		file := filepath.Join(p, "dbconf-"+*dbTag+".yml")
+func NewDBConf(path, env, tag string) (*DBConf, error) {
+	cfgFile := filepath.Join(path, "dbconf.yml")
+	if 0 != len(tag) {
+		file := filepath.Join(path, "dbconf-"+tag+".yml")
 		if st, e := os.Stat(file); nil == e && nil != st && !st.IsDir() {
 			cfgFile = file
 		}
@@ -91,9 +75,9 @@ func newDBConfDetails(p, env string) (*DBConf, error) {
 		return nil, errors.New(fmt.Sprintf("Invalid DBConf: %v", d))
 	}
 
-	migrations_path := filepath.Join(p, "migrations")
-	if 0 != len(*dbTag) {
-		pa := filepath.Join(p, "migrations-"+*dbTag)
+	migrations_path := filepath.Join(path, "migrations")
+	if 0 != len(tag) {
+		pa := filepath.Join(path, "migrations-"+tag)
 		if st, e := os.Stat(pa); nil == e && nil != st && st.IsDir() {
 			migrations_path = pa
 		}

@@ -2,8 +2,6 @@ package goose
 
 import (
 	"log"
-	"os"
-	"path/filepath"
 )
 
 var upCmd = &Command{
@@ -11,39 +9,21 @@ var upCmd = &Command{
 	Usage:   "",
 	Summary: "Migrate the DB to the most recent version available",
 	Help:    `up extended help here...`,
+	Run:     upRun,
 }
 
 func upRun(cmd *Command, args ...string) {
-
-	conf, err := NewDBConf()
+	conf, err := dbConfFromFlags()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	target := MostRecentVersionAvailable(conf.MigrationsDir)
-	RunMigrations(conf, conf.MigrationsDir, target)
-}
+	target, err := GetMostRecentDBVersion(conf.MigrationsDir)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-// helper to identify the most recent possible version
-// within a folder of migration scripts
-func MostRecentVersionAvailable(dirpath string) int64 {
-
-	mostRecent := int64(-1)
-
-	filepath.Walk(dirpath, func(name string, info os.FileInfo, err error) error {
-
-		if v, e := numericComponent(name); e == nil {
-			if v > mostRecent {
-				mostRecent = v
-			}
-		}
-
-		return nil
-	})
-
-	return mostRecent
-}
-
-func init() {
-	upCmd.Run = upRun
+	if err := RunMigrations(conf, conf.MigrationsDir, target); err != nil {
+		log.Fatal(err)
+	}
 }

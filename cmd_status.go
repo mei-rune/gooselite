@@ -13,6 +13,7 @@ var statusCmd = &Command{
 	Usage:   "",
 	Summary: "dump the migration status for the current DB",
 	Help:    `status extended help here...`,
+	Run:     statusRun,
 }
 
 type StatusData struct {
@@ -21,8 +22,7 @@ type StatusData struct {
 }
 
 func statusRun(cmd *Command, args ...string) {
-
-	conf, err := NewDBConf()
+	conf, err := dbConfFromFlags()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func statusRun(cmd *Command, args ...string) {
 	// collect all migrations
 	min := int64(0)
 	max := int64((1 << 63) - 1)
-	mm, e := collectMigrations(conf.MigrationsDir, min, max)
+	migrations, e := CollectMigrations(conf.MigrationsDir, min, max)
 	if e != nil {
 		log.Fatal(e)
 	}
@@ -42,14 +42,14 @@ func statusRun(cmd *Command, args ...string) {
 	defer db.Close()
 
 	// must ensure that the version table exists if we're running on a pristine DB
-	if _, e := ensureDBVersion(conf, db); e != nil {
+	if _, e := EnsureDBVersion(conf, db); e != nil {
 		log.Fatal(e)
 	}
 
 	fmt.Printf("goose: status for environment '%v'\n", conf.Env)
 	fmt.Println("    Applied At                  Migration")
 	fmt.Println("    =======================================")
-	for _, m := range mm.Migrations {
+	for _, m := range migrations {
 		printMigrationStatus(db, m.Version, filepath.Base(m.Source))
 	}
 }
@@ -72,8 +72,4 @@ func printMigrationStatus(db *sql.DB, version int64, script string) {
 	}
 
 	fmt.Printf("    %-24s -- %v\n", appliedAt, script)
-}
-
-func init() {
-	statusCmd.Run = statusRun
 }
