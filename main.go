@@ -14,8 +14,13 @@ var flagPath *string
 var flagEnv *string
 var flagTag *string
 
+var ReadDbConf func() (*DBConf, error)
+
 // helper to create a DBConf from the given flags
 func dbConfFromFlags() (dbconf *DBConf, err error) {
+	if nil != ReadDbConf {
+		return ReadDbConf()
+	}
 	return NewDBConf(*flagPath, *flagEnv, *flagTag)
 }
 
@@ -31,7 +36,7 @@ var Commands = []*Command{
 }
 
 func Run(arguments ...string) {
-	if nil == GooseFlagSet.Lookup("path") {
+	if nil == ReadDbConf && nil == GooseFlagSet.Lookup("path") {
 		flagPath = GooseFlagSet.String("path", "db", "folder containing db info")
 		flagEnv = GooseFlagSet.String("env", "development", "which DB environment to use")
 		flagTag = GooseFlagSet.String("tag", "", "which config path and migrations path to use")
