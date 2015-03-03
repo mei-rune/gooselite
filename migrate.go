@@ -327,12 +327,12 @@ func GetMostRecentDBVersion(dirpath string) (version int64, err error) {
 	})
 
 	if nil != e {
-		err = errors.New("no valid version found in the " + dirpath + " - " + e.Error())
+		err = errors.New("no valid version found in the '" + dirpath + "' - " + e.Error())
 		return
 	}
 
 	if version == -1 {
-		err = errors.New("no valid version found in the " + dirpath)
+		err = errors.New("no valid version found in the '" + dirpath + "'.")
 	}
 
 	return
