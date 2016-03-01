@@ -8,7 +8,7 @@ import (
 func createMsSqlDriver(name, open string) DBDriver {
 	return DBDriver{Name: "odbc",
 		OpenStr: open,
-		Import:  "code.google.com/p/odbc",
+		Import:  "github.com/runner-mei/odbc",
 		Dialect: DialectByName("mssql")}
 }
 
