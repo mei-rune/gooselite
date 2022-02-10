@@ -3,10 +3,18 @@ package goose
 import (
 	"errors"
 	"fmt"
-	"github.com/kylelemons/go-gypsy/yaml"
-	"github.com/lib/pq"
 	"os"
 	"path/filepath"
+
+	"github.com/kylelemons/go-gypsy/yaml"
+	"github.com/lib/pq"
+
+	_ "gitee.com/opengauss/openGauss-connector-go-pq" // openGauss
+	_ "gitee.com/runner.mei/dm"                       // 达梦
+	_ "gitee.com/runner.mei/gokb"                     // 人大金仓
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
+	_ "github.com/sijms/go-ora/v2" // oracle
 )
 
 // DBDriver encapsulates the info needed to work with
