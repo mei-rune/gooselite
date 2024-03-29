@@ -10,7 +10,7 @@ import (
 	"github.com/lib/pq"
 
 	_ "gitee.com/opengauss/openGauss-connector-go-pq" // openGauss
-	_ "gitee.com/runner.mei/dm"                       // 达梦
+	_ "gitee.com/chunanyong/dm"                       // 达梦
 	_ "gitee.com/runner.mei/gokb"                     // 人大金仓
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
