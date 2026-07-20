@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"database/sql"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -39,7 +40,7 @@ func endsWithSemicolon(line string) bool {
 // within a statement. For these cases, we provide the explicit annotations
 // 'StatementBegin' and 'StatementEnd' to allow the script to
 // tell us to ignore semicolons.
-func splitSQLStatements(r io.Reader, direction bool) (stmts []string) {
+func splitSQLStatements(r io.Reader, direction bool) (stmts []string, err error) {
 
 	var buf bytes.Buffer
 	scanner := bufio.NewScanner(r)
@@ -91,7 +92,7 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string) {
 		}
 
 		if _, err := buf.WriteString(line + "\n"); err != nil {
-			log.Fatalf("io err: %v", err)
+			return nil, err
 		}
 
 		if !ignoreSemicolons && (statementEnded || endsWithSemicolon(line)) {
@@ -102,7 +103,7 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatalf("scanning migration: %v", err)
+		return nil, fmt.Errorf("scan migration: %w", err)
 	}
 
 	// diagnose likely migration script errors
@@ -111,8 +112,7 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string) {
 	}
 
 	if upSections == 0 && downSections == 0 {
-		log.Fatalf(`ERROR: no Up/Down annotations found, so no statements were executed.
-			See https://bitbucket.org/liamstask/goose/overview for details.`)
+		return nil, fmt.Errorf("no Up/Down annotations found, so no statements were executed")
 	}
 
 	return
@@ -126,30 +126,33 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string) {
 //
 // All statements following an Up or Down directive are grouped together
 // until another direction directive is found.
-func runSQLMigration(conf *DBConf, db *sql.DB, script string, v int64, direction bool) error {
-
+func runSQLMigration(conf *DBConfig, db *sql.DB, script string, v int64, direction bool) error {
 	txn, err := db.Begin()
 	if err != nil {
-		log.Fatal("db.Begin:", err)
+		return fmt.Errorf("db.Begin: %w", err)
 	}
 
 	f, err := os.Open(script)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("open migration file: %w", err)
 	}
 
 	// find each statement, checking annotations for up/down direction
 	// and execute each of them in the current transaction
-	for _, query := range splitSQLStatements(f, direction) {
+	stmts, err := splitSQLStatements(f, direction)
+	if err != nil {
+		return fmt.Errorf("split SQL statements: %w", err)
+	}
+
+	for _, query := range stmts {
 		if _, err = txn.Exec(query); err != nil {
 			txn.Rollback()
-			log.Fatalf("FAIL %s (%v), quitting migration.", filepath.Base(script), err)
-			return err
+			return fmt.Errorf("FAIL %s (%v), quitting migration.", filepath.Base(script), err)
 		}
 	}
 
 	if err = finalizeMigration(conf, txn, direction, v); err != nil {
-		log.Fatalf("error finalizing migration %s, quitting. (%v)", filepath.Base(script), err)
+		return fmt.Errorf("error finalizing migration %s, quitting. (%v)", filepath.Base(script), err)
 	}
 
 	return nil
@@ -157,14 +160,16 @@ func runSQLMigration(conf *DBConf, db *sql.DB, script string, v int64, direction
 
 // Update the version table for the given migration,
 // and finalize the transaction.
-func finalizeMigration(conf *DBConf, txn *sql.Tx, direction bool, v int64) error {
+func finalizeMigration(conf *DBConfig, txn *sql.Tx, direction bool, v int64) error {
 
 	// XXX: drop goose_db_version table on some minimum version number?
-	d := conf.Driver.Dialect
-	if _, err := txn.Exec(d.InsertVersionSql(), v, direction); err != nil {
+	if _, err := txn.Exec("INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?);", v, direction); err != nil {
 		txn.Rollback()
-		return err
+		return fmt.Errorf("insert version row: %w", err)
 	}
 
-	return txn.Commit()
+	if err := txn.Commit(); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
 }

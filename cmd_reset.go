@@ -1,38 +1,37 @@
 package goose
 
 import (
-	"log"
+	"context"
+	"flag"
 )
 
-var resetCmd = &Command{
-	Name:    "reset",
-	Usage:   "",
-	Summary: "Roll back the version to 0 and Migrate the DB to the most recent version available",
-	Help:    `reset extended help here...`,
-	Run:     resetRun,
+type ResetCmd struct {
+	cfg DBConfig
 }
 
-func resetRun(cmd *Command, args ...string) {
-	conf, err := dbConfFromFlags()
-	if err != nil {
-		log.Fatal(err)
-	}
+func (c *ResetCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	return c.cfg.Flags(fs)
+}
 
-	current, err := GetDBVersion(conf)
+func (c *ResetCmd) Run(args []string) error {
+	return Reset(context.Background(), &c.cfg)
+}
+
+func Reset(ctx context.Context, cfg *DBConfig) error {
+	current, err := GetDBVersion(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if current != 0 {
-		RunMigrations(conf, conf.MigrationsDir, 0)
+		if err := RunMigrations(ctx, cfg, cfg.MigrationsDir, 0); err != nil {
+			return err
+		}
 	}
 
-	target, err := GetMostRecentDBVersion(conf.MigrationsDir)
+	target, err := GetMostRecentDBVersion(cfg.MigrationsDir)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	err = RunMigrations(conf, conf.MigrationsDir, target)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return RunMigrations(ctx, cfg, cfg.MigrationsDir, target)
 }

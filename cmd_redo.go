@@ -1,36 +1,36 @@
 package goose
 
-import "log"
+import (
+	"context"
+	"flag"
+)
 
-var redoCmd = &Command{
-	Name:    "redo",
-	Usage:   "",
-	Summary: "Re-run the latest migration",
-	Help:    `redo extended help here...`,
-	Run:     redoRun,
+type RedoCmd struct {
+	cfg DBConfig
 }
 
-func redoRun(cmd *Command, args ...string) {
-	conf, err := dbConfFromFlags()
+func (c *RedoCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	return c.cfg.Flags(fs)
+}
+
+func (c *RedoCmd) Run(args []string) error {
+	return Redo(context.Background(), &c.cfg)
+}
+
+func Redo(ctx context.Context, cfg *DBConfig) error {
+	current, err := GetDBVersion(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	current, err := GetDBVersion(conf)
+	previous, err := GetPreviousDBVersion(cfg.MigrationsDir, current)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	previous, err := GetPreviousDBVersion(conf.MigrationsDir, current)
-	if err != nil {
-		log.Fatal(err)
+	if err := RunMigrations(ctx, cfg, cfg.MigrationsDir, previous); err != nil {
+		return err
 	}
 
-	if err := RunMigrations(conf, conf.MigrationsDir, previous); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := RunMigrations(conf, conf.MigrationsDir, current); err != nil {
-		log.Fatal(err)
-	}
+	return RunMigrations(ctx, cfg, cfg.MigrationsDir, current)
 }

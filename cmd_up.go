@@ -1,29 +1,27 @@
 package goose
 
 import (
-	"log"
+	"context"
+	"flag"
 )
 
-var upCmd = &Command{
-	Name:    "up",
-	Usage:   "",
-	Summary: "Migrate the DB to the most recent version available",
-	Help:    `up extended help here...`,
-	Run:     upRun,
+type UpCmd struct {
+	cfg DBConfig
 }
 
-func upRun(cmd *Command, args ...string) {
-	conf, err := dbConfFromFlags()
+func (c *UpCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	return c.cfg.Flags(fs)
+}
+
+func (c *UpCmd) Run(args []string) error {
+	return Up(context.Background(), &c.cfg)
+}
+
+func Up(ctx context.Context, cfg *DBConfig) error {
+	target, err := GetMostRecentDBVersion(cfg.MigrationsDir)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	target, err := GetMostRecentDBVersion(conf.MigrationsDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := RunMigrations(conf, conf.MigrationsDir, target); err != nil {
-		log.Fatal(err)
-	}
+	return RunMigrations(ctx, cfg, cfg.MigrationsDir, target)
 }

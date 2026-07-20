@@ -1,35 +1,32 @@
 package goose
 
 import (
-	"log"
+	"context"
+	"flag"
 )
 
-var downCmd = &Command{
-	Name:    "down",
-	Usage:   "",
-	Summary: "Roll back the version by 1",
-	Help:    `down extended help here...`,
-	Run:     downRun,
+type DownCmd struct {
+	cfg DBConfig
 }
 
-func downRun(cmd *Command, args ...string) {
+func (c *DownCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	return c.cfg.Flags(fs)
+}
 
-	conf, err := dbConfFromFlags()
+func (c *DownCmd) Run(args []string) error {
+	return Down(context.Background(), &c.cfg)
+}
+
+func Down(ctx context.Context, cfg *DBConfig) error {
+	current, err := GetDBVersion(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	current, err := GetDBVersion(conf)
+	previous, err := GetPreviousDBVersion(cfg.MigrationsDir, current)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	previous, err := GetPreviousDBVersion(conf.MigrationsDir, current)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err = RunMigrations(conf, conf.MigrationsDir, previous); err != nil {
-		log.Fatal(err)
-	}
+	return RunMigrations(ctx, cfg, cfg.MigrationsDir, previous)
 }

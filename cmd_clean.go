@@ -1,36 +1,33 @@
 package goose
 
 import (
+	"context"
+	"flag"
 	"fmt"
-	"log"
 )
 
-var cleanCmd = &Command{
-	Name:    "clean",
-	Usage:   "",
-	Summary: "Roll back the version by 1",
-	Help:    `clean extended help here...`,
-	Run:     cleanRun,
+type CleanCmd struct {
+	cfg DBConfig
 }
 
-func cleanRun(cmd *Command, args ...string) {
-	conf, err := dbConfFromFlags()
-	if err != nil {
-		log.Fatal(err)
-	}
+func (c *CleanCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	return c.cfg.Flags(fs)
+}
 
-	current, err := GetDBVersion(conf)
+func (c *CleanCmd) Run(args []string) error {
+	return Clean(context.Background(), &c.cfg)
+}
+
+func Clean(ctx context.Context, cfg *DBConfig) error {
+	current, err := GetDBVersion(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if current == 0 {
 		fmt.Println("db is empty, can't clean.")
-		return
+		return nil
 	}
 
-	err = RunMigrations(conf, conf.MigrationsDir, 0)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return RunMigrations(ctx, cfg, cfg.MigrationsDir, 0)
 }

@@ -5,86 +5,55 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"text/template"
 )
 
-// global options. available to any subcommands.
-var GooseFlagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-var flagPath *string
-var flagEnv *string
-var flagTag *string
-
-var ReadDbConf func() (*DBConf, error)
-
-// helper to create a DBConf from the given flags
-func dbConfFromFlags() (dbconf *DBConf, err error) {
-	if nil != ReadDbConf {
-		return ReadDbConf()
-	}
-	return NewDBConf(*flagPath, *flagEnv, *flagTag)
-}
-
-var Commands = []*Command{
-	upCmd,
-	downCmd,
-	redoCmd,
-	statusCmd,
-	createCmd,
-	dbVersionCmd,
-	cleanCmd,
-	resetCmd,
+var Commands = []commandEntry{
+	{Cmd: &UpCmd{}, Name: "up", Summary: "Migrate the DB to the most recent version available", Help: "up extended help here..."},
+	{Cmd: &DownCmd{}, Name: "down", Summary: "Roll back the version by 1", Help: "down extended help here..."},
+	{Cmd: &RedoCmd{}, Name: "redo", Summary: "Re-run the latest migration", Help: "redo extended help here..."},
+	{Cmd: &StatusCmd{}, Name: "status", Summary: "dump the migration status for the current DB", Help: "status extended help here..."},
+	{Cmd: &CreateCmd{}, Name: "create", Summary: "Create the scaffolding for a new migration", Help: "create extended help here..."},
+	{Cmd: &DbVersionCmd{}, Name: "dbversion", Summary: "Print the current version of the database", Help: "dbversion extended help here..."},
+	{Cmd: &CleanCmd{}, Name: "clean", Summary: "Roll back the version by 1", Help: "clean extended help here..."},
+	{Cmd: &ResetCmd{}, Name: "reset", Summary: "Roll back the version to 0 and Migrate the DB to the most recent version available", Help: "reset extended help here..."},
 }
 
 func Run(arguments ...string) {
-	if nil == ReadDbConf && nil == GooseFlagSet.Lookup("path") {
-		flagPath = GooseFlagSet.String("path", "db", "folder containing db info")
-		flagEnv = GooseFlagSet.String("env", "development", "which DB environment to use")
-		flagTag = GooseFlagSet.String("tag", "", "which config path and migrations path to use")
-	}
-
-	GooseFlagSet.Usage = usage
-	GooseFlagSet.Parse(arguments)
-
-	args := GooseFlagSet.Args()
-	if len(args) == 0 || args[0] == "-h" {
-		GooseFlagSet.Usage()
+	if len(arguments) == 0 || arguments[0] == "-h" {
+		fmt.Println("Available commands:")
+		for _, c := range Commands {
+			fmt.Printf("    %s\n", c.Name)
+		}
 		return
 	}
 
-	var cmd *Command
-	name := args[0]
-	for _, c := range Commands {
+	// first argument is the subcommand name
+	name := arguments[0]
+
+	var entry *commandEntry
+	for i, c := range Commands {
 		if strings.HasPrefix(c.Name, name) {
-			cmd = c
+			entry = &Commands[i]
 			break
 		}
 	}
 
-	if cmd == nil {
+	if entry == nil {
 		fmt.Printf("error: unknown command %q\n", name)
-		GooseFlagSet.Usage()
 		os.Exit(1)
 	}
 
-	cmd.Exec(args[1:])
+	cmdFlags := entry.Flags(flag.NewFlagSet(entry.Name, flag.ExitOnError))
+	cmdFlags.Usage = func() { usage(cmdFlags) }
+	cmdFlags.Parse(arguments[1:])
+
+	if err := entry.Run(cmdFlags.Args()); err != nil {
+		fmt.Fprintf(os.Stderr, "goose: %v\n", err)
+		os.Exit(1)
+	}
 }
 
-func usage() {
-	fmt.Print(usagePrefix)
-	GooseFlagSet.PrintDefaults()
-	usageTmpl.Execute(os.Stdout, Commands)
+func usage(fs *flag.FlagSet) {
+	fmt.Printf("Usage: goose %s [options]\n", fs.Name())
+	fs.PrintDefaults()
 }
-
-var usagePrefix = `
-goose is a database migration management system for Go projects.
-
-Usage:
-    goose [options] <subcommand> [subcommand options]
-
-Options:
-`
-var usageTmpl = template.Must(template.New("usage").Parse(
-	`
-Commands:{{range .}}
-    {{.Name | printf "%-10s"}} {{.Summary}}{{end}}
-`))

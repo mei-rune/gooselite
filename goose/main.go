@@ -1,8 +1,9 @@
 package main
 
 import (
-	"bitbucket.org/runner_mei/goose"
 	"os"
+
+	"github.com/mei-rune/goose"
 )
 
 func main() {

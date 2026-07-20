@@ -1,19 +1,17 @@
 package goose
 
 import (
+	"context"
 	"database/sql"
+	"flag"
 	"fmt"
 	"log"
 	"path/filepath"
 	"time"
 )
 
-var statusCmd = &Command{
-	Name:    "status",
-	Usage:   "",
-	Summary: "dump the migration status for the current DB",
-	Help:    `status extended help here...`,
-	Run:     statusRun,
+type StatusCmd struct {
+	cfg DBConfig
 }
 
 type StatusData struct {
@@ -21,37 +19,40 @@ type StatusData struct {
 	Status string
 }
 
-func statusRun(cmd *Command, args ...string) {
-	conf, err := dbConfFromFlags()
-	if err != nil {
-		log.Fatal(err)
-	}
+func (c *StatusCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	return c.cfg.Flags(fs)
+}
 
+func (c *StatusCmd) Run(args []string) error {
+	return Status(context.Background(), &c.cfg)
+}
+
+func Status(ctx context.Context, cfg *DBConfig) error {
 	// collect all migrations
 	min := int64(0)
 	max := int64((1 << 63) - 1)
-	migrations, e := CollectMigrations(conf.MigrationsDir, min, max)
+	migrations, e := CollectMigrations(cfg.MigrationsDir, min, max)
 	if e != nil {
-		log.Fatal(e)
+		return e
 	}
 
-	db, e := sql.Open(conf.Driver.Name, conf.Driver.OpenStr)
+	db, e := sql.Open(cfg.DriverName, cfg.ConnStr)
 	if e != nil {
-		log.Fatal("couldn't open DB:", e)
+		return fmt.Errorf("couldn't open DB: %w", e)
 	}
 	defer db.Close()
 
 	// must ensure that the version table exists if we're running on a pristine DB
-	if _, e := EnsureDBVersion(conf, db); e != nil {
-		log.Fatal(e)
+	if _, e := EnsureDBVersion(ctx, cfg, db); e != nil {
+		return e
 	}
 
-	fmt.Printf("goose: status for environment '%v'\n", conf.Env)
 	fmt.Println("    Applied At                  Migration")
 	fmt.Println("    =======================================")
 	for _, m := range migrations {
 		printMigrationStatus(db, m.Version, filepath.Base(m.Source))
 	}
+	return nil
 }
 
 func printMigrationStatus(db *sql.DB, version int64, script string) {

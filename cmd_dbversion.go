@@ -1,28 +1,29 @@
 package goose
 
 import (
+	"context"
+	"flag"
 	"fmt"
-	"log"
 )
 
-var dbVersionCmd = &Command{
-	Name:    "dbversion",
-	Usage:   "",
-	Summary: "Print the current version of the database",
-	Help:    `dbversion extended help here...`,
-	Run:     dbVersionRun,
+type DbVersionCmd struct {
+	cfg DBConfig
 }
 
-func dbVersionRun(cmd *Command, args ...string) {
-	conf, err := dbConfFromFlags()
-	if err != nil {
-		log.Fatal(err)
-	}
+func (c *DbVersionCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	return c.cfg.Flags(fs)
+}
 
-	current, err := GetDBVersion(conf)
+func (c *DbVersionCmd) Run(args []string) error {
+	return DbVersion(context.Background(), &c.cfg)
+}
+
+func DbVersion(ctx context.Context, cfg *DBConfig) error {
+	current, err := GetDBVersion(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	fmt.Printf("goose: dbversion %v\n", current)
+	return nil
 }

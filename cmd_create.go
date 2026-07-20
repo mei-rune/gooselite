@@ -1,25 +1,26 @@
 package goose
 
 import (
+	"context"
+	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
 )
 
-var createCmd = &Command{
-	Name:    "create",
-	Usage:   "",
-	Summary: "Create the scaffolding for a new migration",
-	Help:    `create extended help here...`,
-	Run:     createRun,
+type CreateCmd struct {
+	migrationsDir string
 }
 
-func createRun(cmd *Command, args ...string) {
+func (c *CreateCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
+	fs.StringVar(&c.migrationsDir, "dir", "db", "migrations directory")
+	return fs
+}
 
+func (c *CreateCmd) Run(args []string) error {
 	if len(args) < 1 {
-		log.Fatal("goose create: migration name required")
+		return fmt.Errorf("goose create: migration name required")
 	}
 
 	migrationType := "go" // default to Go migrations
@@ -27,24 +28,24 @@ func createRun(cmd *Command, args ...string) {
 		migrationType = args[1]
 	}
 
-	conf, err := dbConfFromFlags()
-	if err != nil {
-		log.Fatal(err)
+	return Create(context.Background(), c.migrationsDir, args[0], migrationType)
+}
+
+func Create(ctx context.Context, migrationsDir, name, migrationType string) error {
+	if err := os.MkdirAll(migrationsDir, 0777); err != nil {
+		return err
 	}
 
-	if err = os.MkdirAll(conf.MigrationsDir, 0777); err != nil {
-		log.Fatal(err)
-	}
-
-	n, err := CreateMigration(args[0], migrationType, conf.MigrationsDir, time.Now())
+	n, err := CreateMigration(name, migrationType, migrationsDir, time.Now())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	a, e := filepath.Abs(n)
 	if e != nil {
-		log.Fatal(e)
+		return e
 	}
 
 	fmt.Println("goose: created", a)
+	return nil
 }
