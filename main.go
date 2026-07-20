@@ -3,7 +3,6 @@ package goose
 import (
 	"flag"
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -18,13 +17,13 @@ var Commands = []commandEntry{
 	{Cmd: &ResetCmd{}, Name: "reset", Summary: "Roll back the version to 0 and Migrate the DB to the most recent version available", Help: "reset extended help here..."},
 }
 
-func Run(arguments ...string) {
+func Run(arguments ...string) error {
 	if len(arguments) == 0 || arguments[0] == "-h" {
 		fmt.Println("Available commands:")
 		for _, c := range Commands {
 			fmt.Printf("    %s\n", c.Name)
 		}
-		return
+		return nil
 	}
 
 	// first argument is the subcommand name
@@ -39,8 +38,7 @@ func Run(arguments ...string) {
 	}
 
 	if entry == nil {
-		fmt.Printf("error: unknown command %q\n", name)
-		os.Exit(1)
+		return fmt.Errorf("unknown command %q", name)
 	}
 
 	cmdFlags := entry.Flags(flag.NewFlagSet(entry.Name, flag.ExitOnError))
@@ -48,9 +46,10 @@ func Run(arguments ...string) {
 	cmdFlags.Parse(arguments[1:])
 
 	if err := entry.Run(cmdFlags.Args()); err != nil {
-		fmt.Fprintf(os.Stderr, "goose: %v\n", err)
-		os.Exit(1)
+		return err
 	}
+
+	return nil
 }
 
 func usage(fs *flag.FlagSet) {
