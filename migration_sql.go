@@ -3,6 +3,7 @@ package goose
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
 	"io"
@@ -126,16 +127,12 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string, err error)
 //
 // All statements following an Up or Down directive are grouped together
 // until another direction directive is found.
-func runSQLMigration(conf *DBConfig, db *sql.DB, script string, v int64, direction bool) error {
-	txn, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("db.Begin: %w", err)
-	}
-
+func runSQLMigration(ctx context.Context, conf *DBConfig, dialect SqlDialect, db *sql.DB, script string, v int64, direction bool) error {
 	f, err := os.Open(script)
 	if err != nil {
 		return fmt.Errorf("open migration file: %w", err)
 	}
+	defer f.Close()
 
 	// find each statement, checking annotations for up/down direction
 	// and execute each of them in the current transaction
@@ -143,33 +140,45 @@ func runSQLMigration(conf *DBConfig, db *sql.DB, script string, v int64, directi
 	if err != nil {
 		return fmt.Errorf("split SQL statements: %w", err)
 	}
+	err = f.Close()
+	if err != nil {
+		return fmt.Errorf("split SQL statements: %w", err)
+	}
+
+	txn, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("db.Begin: %w", err)
+	}
+
+	var committed bool
+	defer func() {
+		if !committed {
+			txn.Rollback()
+		}
+	}()
 
 	for _, query := range stmts {
+		query = strings.TrimSpace(query)
+		if strings.HasSuffix(query, ";") &&
+			!strings.HasSuffix(query, "END;") &&
+			!strings.HasSuffix(query, "End;") &&
+			!strings.HasSuffix(query, "end;") {
+			query = strings.TrimSuffix(query, ";")
+		}
 		if _, err = txn.Exec(query); err != nil {
-			txn.Rollback()
+			fmt.Println("Executing:", query)
 			return fmt.Errorf("FAIL %s (%v), quitting migration.", filepath.Base(script), err)
 		}
 	}
 
-	if err = finalizeMigration(conf, txn, direction, v); err != nil {
-		return fmt.Errorf("error finalizing migration %s, quitting. (%v)", filepath.Base(script), err)
-	}
-
-	return nil
-}
-
-// Update the version table for the given migration,
-// and finalize the transaction.
-func finalizeMigration(conf *DBConfig, txn *sql.Tx, direction bool, v int64) error {
-
-	// XXX: drop goose_db_version table on some minimum version number?
-	if _, err := txn.Exec("INSERT INTO goose_db_version (version_id, is_applied) VALUES (?, ?);", v, direction); err != nil {
-		txn.Rollback()
+	if err := dialect.InsertVersionSql(ctx, txn, v, direction); err != nil {
 		return fmt.Errorf("insert version row: %w", err)
 	}
 
+	committed = true
 	if err := txn.Commit(); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
+
 	return nil
 }

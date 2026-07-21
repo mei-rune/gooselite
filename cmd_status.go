@@ -31,7 +31,7 @@ func Status(ctx context.Context, cfg *DBConfig) error {
 	// collect all migrations
 	min := int64(0)
 	max := int64((1 << 63) - 1)
-	migrations, e := CollectMigrations(cfg.MigrationsDir, min, max)
+	migrations, e := CollectMigrations(ctx, cfg.MigrationsDir, min, max)
 	if e != nil {
 		return e
 	}
@@ -42,6 +42,8 @@ func Status(ctx context.Context, cfg *DBConfig) error {
 	}
 	defer db.Close()
 
+	dialect := DialectByName(cfg.DriverName)
+
 	// must ensure that the version table exists if we're running on a pristine DB
 	if _, e := EnsureDBVersion(ctx, cfg, db); e != nil {
 		return e
@@ -50,15 +52,16 @@ func Status(ctx context.Context, cfg *DBConfig) error {
 	fmt.Println("    Applied At                  Migration")
 	fmt.Println("    =======================================")
 	for _, m := range migrations {
-		printMigrationStatus(db, m.Version, filepath.Base(m.Source))
+		printMigrationStatus(ctx, dialect, db, m.Version, filepath.Base(m.Source))
 	}
 	return nil
 }
 
-func printMigrationStatus(db *sql.DB, version int64, script string) {
-	var row MigrationRecord
-	q := fmt.Sprintf("SELECT tstamp, is_applied FROM goose_db_version WHERE version_id=%d ORDER BY tstamp DESC LIMIT 1", version)
-	e := db.QueryRow(q).Scan(&row.TStamp, &row.IsApplied)
+func printMigrationStatus(ctx context.Context, dialect SqlDialect, db *sql.DB, version int64, script string) {
+	row, e := dialect.GetMigration(ctx, db, version)
+
+	// q := fmt.Sprintf("SELECT tstamp, is_applied FROM goose_db_version WHERE version_id=? ORDER BY tstamp DESC LIMIT 1", version)
+	// e := db.QueryRow(q).Scan(&row.TStamp, &row.IsApplied)
 
 	if e != nil && e != sql.ErrNoRows {
 		log.Fatal(e)

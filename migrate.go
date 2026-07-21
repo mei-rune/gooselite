@@ -56,7 +56,7 @@ func RunMigrations(ctx context.Context, conf *DBConfig, migrationsDir string, ta
 		return err
 	}
 
-	migrations, err := CollectMigrations(migrationsDir, current, target)
+	migrations, err := CollectMigrations(ctx, migrationsDir, current, target)
 	if err != nil {
 		return err
 	}
@@ -70,6 +70,8 @@ func RunMigrations(ctx context.Context, conf *DBConfig, migrationsDir string, ta
 	direction := current < target
 	ms.Sort(direction)
 
+	dialect := DialectByName(conf.DriverName)
+
 	fmt.Printf("goose: migrating db, current version: %d, target: %d\n",
 		current, target)
 
@@ -77,11 +79,11 @@ func RunMigrations(ctx context.Context, conf *DBConfig, migrationsDir string, ta
 
 		switch filepath.Ext(m.Source) {
 		case ".sql":
-			err = runSQLMigration(conf, db, m.Source, m.Version, direction)
+			err = runSQLMigration(ctx, conf, dialect, db, m.Source, m.Version, direction)
 		}
 
 		if err != nil {
-			return errors.New(fmt.Sprintf("FAIL %v, quitting migration", err))
+			return err
 		}
 
 		fmt.Println("OK   ", filepath.Base(m.Source))
@@ -92,7 +94,7 @@ func RunMigrations(ctx context.Context, conf *DBConfig, migrationsDir string, ta
 
 // collect all the valid looking migration scripts in the
 // migrations folder, and key them by version
-func CollectMigrations(dirpath string, current, target int64) (m []*Migration, err error) {
+func CollectMigrations(ctx context.Context, dirpath string, current, target int64) (m []*Migration, err error) {
 
 	// extract the numeric component of each migration,
 	// filter out any uninteresting files,
@@ -243,10 +245,16 @@ func createVersionTable(ctx context.Context, conf *DBConfig, db *sql.DB) error {
 
 	if err := d.CreateVersionTableSql(ctx, db); err != nil {
 		txn.Rollback()
+		if strings.Contains(err.Error(), "already exists") ||
+			strings.Contains(err.Error(), "已存在") ||
+			strings.Contains(err.Error(), "已经存在") ||
+			strings.Contains(err.Error(), "ORA-00955") {
+			return nil
+		}
 		return fmt.Errorf("create version table: %w", err)
 	}
 
-	if err := d.InsertVersionSql(ctx, db); err != nil {
+	if err := d.InsertVersionSql(ctx, db, 0, true); err != nil {
 		txn.Rollback()
 		return fmt.Errorf("insert initial version: %w", err)
 	}
