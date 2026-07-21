@@ -186,12 +186,17 @@ func NumericComponent(name string) (int64, error) {
 
 // retrieve the current version for this DB.
 // Create and initialize the DB version table if it doesn't exist.
-func EnsureDBVersion(ctx context.Context, conf *DBConfig, db *sql.DB) (int64, error) {
-	rows, err := DialectByName(conf.DriverName).DbVersionQuery(ctx, db)
+func EnsureDBVersion(ctx context.Context, cfg *DBConfig, db *sql.DB) (int64, error) {
+	d := DialectByName(cfg.DriverName)
+	if d == nil {
+		return 0, errors.New("driver '"+cfg.DriverName+"' is unsupported")
+	}
+
+	rows, err := d.DbVersionQuery(ctx, db)
 	if err != nil {
 
 		if err == ErrTableDoesNotExist {
-			return 0, createVersionTable(ctx, conf, db)
+			return 0, createVersionTable(ctx, cfg, db)
 		}
 		return 0, err
 	}
