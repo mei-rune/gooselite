@@ -59,6 +59,7 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string, err error)
 
 		line := scanner.Text()
 
+		skipLine := false
 		// handle any goose-specific commands
 		if strings.HasPrefix(line, sqlCmdPrefix) {
 			cmd := strings.TrimSpace(line[len(sqlCmdPrefix):])
@@ -66,24 +67,32 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string, err error)
 			case "Up":
 				directionIsActive = (direction == true)
 				upSections++
+
+				skipLine = true
 				break
 
 			case "Down":
 				directionIsActive = (direction == false)
 				downSections++
+
+				skipLine = true
 				break
 
-			case "StatementBegin":
+			case "StatementBegin", "statementBegin":
 				if directionIsActive {
 					ignoreSemicolons = true
 				}
+
+				skipLine = true
 				break
 
-			case "StatementEnd":
+			case "StatementEnd", "statementEnd":
 				if directionIsActive {
 					statementEnded = (ignoreSemicolons == true)
 					ignoreSemicolons = false
 				}
+
+				skipLine = true
 				break
 			}
 		}
@@ -92,8 +101,10 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string, err error)
 			continue
 		}
 
-		if _, err := buf.WriteString(line + "\n"); err != nil {
-			return nil, err
+		if !skipLine {
+			if _, err := buf.WriteString(line + "\n"); err != nil {
+				return nil, err
+			}
 		}
 
 		if !ignoreSemicolons && (statementEnded || endsWithSemicolon(line)) {
