@@ -81,6 +81,7 @@ func splitSQLStatements(r io.Reader, direction bool, args map[string]interface{}
 				directionIsActive = (direction == true)
 				upSections++
 
+				ignoreSemicolons = false
 				skipLine = true
 				break
 
@@ -88,22 +89,27 @@ func splitSQLStatements(r io.Reader, direction bool, args map[string]interface{}
 				directionIsActive = (direction == false)
 				downSections++
 
+				ignoreSemicolons = false
 				skipLine = true
 				break
 
 			case "StatementBegin", "statementBegin":
-				if directionIsActive {
-					ignoreSemicolons = true
+				if ignoreSemicolons {
+					log.Println("WARNING: saw '-- +goose StatementBegin' with no matching '-- +goose StatementEnd'")
 				}
 
+				ignoreSemicolons = true
 				skipLine = true
 				break
 
 			case "StatementEnd", "statementEnd":
-				if directionIsActive {
-					statementEnded = (ignoreSemicolons == true)
-					ignoreSemicolons = false
+				if ignoreSemicolons {
+					statementEnded = true
+				} else {
+					log.Println("WARNING: saw '-- +goose StatementEnd' with no matching '-- +goose StatementBegin'")
 				}
+
+				ignoreSemicolons = false
 
 				skipLine = true
 				break
@@ -122,7 +128,11 @@ func splitSQLStatements(r io.Reader, direction bool, args map[string]interface{}
 
 		if !ignoreSemicolons && (statementEnded || endsWithSemicolon(line)) {
 			statementEnded = false
-			stmts = append(stmts, buf.String())
+			bs := buf.Bytes()
+			bs = bytes.TrimSpace(bs)
+			if len(bs) > 0 {
+				stmts = append(stmts, buf.String())
+			}
 			buf.Reset()
 		}
 	}
@@ -195,11 +205,14 @@ func runSQLMigration(ctx context.Context, dialect SqlDialect, db *sql.DB, tableN
 			fmt.Println("Executing:", query)
 			return fmt.Errorf("FAIL %s (%v), quitting migration.", filepath.Base(script), err)
 		}
+		fmt.Println("Executing:", query)
 	}
 
 	if err := dialect.InsertVersionSql(ctx, txn, tableName, v, direction, description); err != nil {
 		return fmt.Errorf("insert version row: %w", err)
 	}
+
+
 
 	committed = true
 	if err := txn.Commit(); err != nil {

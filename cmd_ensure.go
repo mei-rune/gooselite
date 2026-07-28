@@ -49,7 +49,7 @@ func (p *Provider) EnsureDBVersion(ctx context.Context) (int64, error) {
 
 	for rows.Next() {
 		var row MigrationRecord
-		if err = rows.Scan(&row.VersionId, &row.IsApplied); err != nil {
+		if err = rows.Scan(&row.VersionId, &row.IsApplied, &row.Description); err != nil {
 			log.Fatal("error scanning rows:", err)
 		}
 

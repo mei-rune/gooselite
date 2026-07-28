@@ -139,5 +139,10 @@ func (p *Provider) GetMigrationsFS() fs.FS {
 }
 
 func (p *Provider) GetTableName() string {
-	return p.cfg.TableName
+	return p.cfg.GetTableName()
+}
+
+// Dialect returns the SQL dialect used by this provider.
+func (p *Provider) Dialect() SqlDialect {
+	return p.dialect
 }
