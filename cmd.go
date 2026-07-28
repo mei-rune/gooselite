@@ -65,6 +65,9 @@ func WithDir(dir string) Option {
 
 // WithDialect sets the SQL dialect.
 func WithDialect(dialect SqlDialect) Option {
+	if dialect == nil {
+		panic("dialect is missing")
+	}
 	return func(p *Provider) {
 		p.dialect = dialect
 	}
@@ -91,6 +94,15 @@ func NewProvider(cfg *DBConfig, opts ...Option) (*Provider, error) {
 		if err := ValidateTableName(p.cfg.TableName); err != nil {
 			return nil, err
 		}
+	}
+	if p.dialect == nil && p.cfg.DriverName == "" {
+		return nil, errors.New("driver name is missing")
+	}
+	if p.conn == nil && p.cfg.ConnStr == "" {
+		return nil, errors.New("driver url is missing")
+	}
+	if p.migrationsFS == nil && p.cfg.MigrationsDir == "" {
+		return nil, errors.New("migrations directory is missing")
 	}
 
 	if p.args == nil {
@@ -144,5 +156,10 @@ func (p *Provider) GetTableName() string {
 
 // Dialect returns the SQL dialect used by this provider.
 func (p *Provider) Dialect() SqlDialect {
+	if p.dialect == nil {
+		if p.cfg.DriverName != "" {
+			p.dialect = DialectByName(p.cfg.DriverName)
+		}
+	}
 	return p.dialect
 }

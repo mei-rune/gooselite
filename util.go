@@ -27,7 +27,7 @@ func writeTemplateToFile(path string, t *template.Template, data interface{}) (s
 }
 
 // TableAlreadyExistKeys 表已存在的错误关键词
-var TableAlreadyExistKeys = []string{"already exists", "已存在", "已经存在"}
+var TableAlreadyExistKeys = []string{"already exists", "已存在", "已经存在", "ORA-00955:"}
 
 func IsTableAlreadyExists(err error) bool {
 	if errors.Is(err, ErrTableDoesAlreadyExist) {

@@ -55,7 +55,7 @@ func (p *Provider) Status(ctx context.Context) error {
 	}
 
 	for _, m := range migrations {
-		printMigrationStatus(ctx, p.dialect, db, p.cfg.GetTableName(), m.Version, filepath.Base(m.Source))
+		printMigrationStatus(ctx, p.Dialect(), db, p.cfg.GetTableName(), m.Version, filepath.Base(m.Source))
 	}
 
 	return nil

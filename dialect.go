@@ -111,5 +111,5 @@ func DialectByName(d string) SqlDialect {
 	if createSqlDialect, ok := SqlDialects[d]; ok {
 		return createSqlDialect()
 	}
-	return nil
+	panic("goose: driver '"+d+"' is unsupport")
 }

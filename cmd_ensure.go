@@ -32,7 +32,7 @@ func (p *Provider) EnsureDBVersion(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 
-	rows, err := p.dialect.DbVersionQuery(ctx, db, p.cfg.GetTableName())
+	rows, err := p.Dialect().DbVersionQuery(ctx, db, p.cfg.GetTableName())
 	if err != nil {
 		if IsTableNotExists(err) {
 			return 0, p.createVersionTable(ctx)

@@ -99,7 +99,7 @@ func (p *Provider) RunMigrations(ctx context.Context, target int64) (err error) 
 
 		switch strings.ToLower(filepath.Ext(m.Source)) {
 		case ".sql":
-			err = runSQLMigration(ctx, p.dialect, db, p.cfg.GetTableName(), fsys, m.Source, m.Version, direction, args)
+			err = runSQLMigration(ctx, p.Dialect(), db, p.cfg.GetTableName(), fsys, m.Source, m.Version, direction, args)
 		}
 
 		if err != nil {
@@ -221,7 +221,7 @@ func (p *Provider) createVersionTable(ctx context.Context) error {
 		return fmt.Errorf("db.Begin: %w", err)
 	}
 
-	if err := p.dialect.CreateVersionTableSql(ctx, db, p.cfg.GetTableName()); err != nil {
+	if err := p.Dialect().CreateVersionTableSql(ctx, db, p.cfg.GetTableName()); err != nil {
 		txn.Rollback()
 		if IsTableAlreadyExists(err) {
 			return nil
@@ -229,7 +229,7 @@ func (p *Provider) createVersionTable(ctx context.Context) error {
 		return fmt.Errorf("create version table: %w", err)
 	}
 
-	if err := p.dialect.InsertVersionSql(ctx, db, p.cfg.GetTableName(), 0, true, "init version"); err != nil {
+	if err := p.Dialect().InsertVersionSql(ctx, db, p.cfg.GetTableName(), 0, true, "init version"); err != nil {
 		txn.Rollback()
 		return fmt.Errorf("insert initial version: %w", err)
 	}
