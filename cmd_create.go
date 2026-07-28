@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -28,15 +29,20 @@ func (c *CreateCmd) Run(args []string) error {
 		migrationType = args[1]
 	}
 
-	return Create(context.Background(), c.migrationsDir, args[0], migrationType)
+	p, err := NewProvider(&DBConfig{MigrationsDir: c.migrationsDir})
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	return p.Create(context.Background(), args[0], migrationType)
 }
 
-func Create(ctx context.Context, migrationsDir, name, migrationType string) error {
-	if err := os.MkdirAll(migrationsDir, 0777); err != nil {
+func (p *Provider) Create(ctx context.Context, name, migrationType string) error {
+	if err := os.MkdirAll(p.cfg.MigrationsDir, 0777); err != nil {
 		return err
 	}
 
-	n, err := CreateMigration(name, migrationType, migrationsDir, time.Now())
+	n, err := CreateMigration(name, migrationType, p.cfg.MigrationsDir, time.Now())
 	if err != nil {
 		return err
 	}
@@ -46,6 +52,6 @@ func Create(ctx context.Context, migrationsDir, name, migrationType string) erro
 		return e
 	}
 
-	fmt.Println("goose: created", a)
+	log.Println("goose: created", a)
 	return nil
 }

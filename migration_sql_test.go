@@ -79,7 +79,7 @@ func TestSplitStatements(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		stmts, err := splitSQLStatements(strings.NewReader(test.sql), test.direction)
+		stmts, err := splitSQLStatements(strings.NewReader(test.sql), test.direction, nil)
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

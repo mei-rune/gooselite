@@ -3,7 +3,7 @@ package goose
 import (
 	"context"
 	"flag"
-	"fmt"
+	"log"
 )
 
 type CleanCmd struct {
@@ -15,19 +15,24 @@ func (c *CleanCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (c *CleanCmd) Run(args []string) error {
-	return Clean(context.Background(), &c.cfg)
+	p, err := NewProvider(&c.cfg)
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	return p.Clean(context.Background())
 }
 
-func Clean(ctx context.Context, cfg *DBConfig) error {
-	current, err := GetDBVersion(cfg)
+func (p *Provider) Clean(ctx context.Context) error {
+	current, err := p.GetDBVersion(ctx)
 	if err != nil {
 		return err
 	}
 
 	if current == 0 {
-		fmt.Println("db is empty, can't clean.")
+		log.Println("db is empty, can't clean.")
 		return nil
 	}
 
-	return RunMigrations(ctx, cfg, cfg.MigrationsDir, 0)
+	return p.RunMigrations(ctx, 0)
 }

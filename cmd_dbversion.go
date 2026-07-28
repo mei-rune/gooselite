@@ -3,7 +3,7 @@ package goose
 import (
 	"context"
 	"flag"
-	"fmt"
+	"log"
 )
 
 type DbVersionCmd struct {
@@ -15,15 +15,20 @@ func (c *DbVersionCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (c *DbVersionCmd) Run(args []string) error {
-	return DbVersion(context.Background(), &c.cfg)
+	p, err := NewProvider(&c.cfg)
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	return p.DbVersion(context.Background())
 }
 
-func DbVersion(ctx context.Context, cfg *DBConfig) error {
-	current, err := GetDBVersion(cfg)
+func (p *Provider) DbVersion(ctx context.Context) error {
+	current, err := p.GetDBVersion(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("goose: dbversion %v\n", current)
+	log.Printf("goose: dbversion %v\n", current)
 	return nil
 }

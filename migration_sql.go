@@ -7,16 +7,16 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 const sqlCmdPrefix = "-- +goose "
 
 func endsWithSemicolon(line string) bool {
-
 	prev := ""
 	scanner := bufio.NewScanner(strings.NewReader(line))
 	scanner.Split(bufio.ScanWords)
@@ -41,10 +41,23 @@ func endsWithSemicolon(line string) bool {
 // within a statement. For these cases, we provide the explicit annotations
 // 'StatementBegin' and 'StatementEnd' to allow the script to
 // tell us to ignore semicolons.
-func splitSQLStatements(r io.Reader, direction bool) (stmts []string, err error) {
+func splitSQLStatements(r io.Reader, direction bool, args map[string]interface{}) (stmts []string, err error) {
+	script, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	tpl, err := template.New("script").Parse(string(script))
+	if err != nil {
+		return nil, err
+	}
+
+	text := bytes.NewBuffer(make([]byte, 0, len(script)))
+	if err := tpl.Execute(text, args); err != nil {
+		return nil, err
+	}
 
 	var buf bytes.Buffer
-	scanner := bufio.NewScanner(r)
+	scanner := bufio.NewScanner(text)
 
 	// track the count of each section
 	// so we can diagnose scripts with no annotations
@@ -138,16 +151,18 @@ func splitSQLStatements(r io.Reader, direction bool) (stmts []string, err error)
 //
 // All statements following an Up or Down directive are grouped together
 // until another direction directive is found.
-func runSQLMigration(ctx context.Context, conf *DBConfig, dialect SqlDialect, db *sql.DB, script string, v int64, direction bool) error {
-	f, err := os.Open(script)
+func runSQLMigration(ctx context.Context, dialect SqlDialect, db *sql.DB, tableName string, fsys fs.FS, script string, v int64, direction bool, args map[string]interface{}) error {
+	f, err := fsys.Open(script)
 	if err != nil {
 		return fmt.Errorf("open migration file: %w", err)
 	}
 	defer f.Close()
 
+	description := filepath.Base(script)
+
 	// find each statement, checking annotations for up/down direction
 	// and execute each of them in the current transaction
-	stmts, err := splitSQLStatements(f, direction)
+	stmts, err := splitSQLStatements(f, direction, args)
 	if err != nil {
 		return fmt.Errorf("split SQL statements: %w", err)
 	}
@@ -182,7 +197,7 @@ func runSQLMigration(ctx context.Context, conf *DBConfig, dialect SqlDialect, db
 		}
 	}
 
-	if err := dialect.InsertVersionSql(ctx, txn, v, direction); err != nil {
+	if err := dialect.InsertVersionSql(ctx, txn, tableName, v, direction, description); err != nil {
 		return fmt.Errorf("insert version row: %w", err)
 	}
 

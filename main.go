@@ -15,6 +15,7 @@ var Commands = []commandEntry{
 	{Cmd: &DbVersionCmd{}, Name: "dbversion", Summary: "Print the current version of the database", Help: "dbversion extended help here..."},
 	{Cmd: &CleanCmd{}, Name: "clean", Summary: "Roll back the version by 1", Help: "clean extended help here..."},
 	{Cmd: &ResetCmd{}, Name: "reset", Summary: "Roll back the version to 0 and Migrate the DB to the most recent version available", Help: "reset extended help here..."},
+	{Cmd: &EnsureCmd{}, Name: "ensure", Summary: "Ensure the DB has the correct version", Help: "ensure extended help here..."},
 }
 
 func Run(arguments ...string) error {

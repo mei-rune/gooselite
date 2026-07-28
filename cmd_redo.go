@@ -14,23 +14,28 @@ func (c *RedoCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (c *RedoCmd) Run(args []string) error {
-	return Redo(context.Background(), &c.cfg)
+	p, err := NewProvider(&c.cfg)
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	return p.Redo(context.Background())
 }
 
-func Redo(ctx context.Context, cfg *DBConfig) error {
-	current, err := GetDBVersion(cfg)
+func (p *Provider) Redo(ctx context.Context) error {
+	current, err := p.GetDBVersion(ctx)
 	if err != nil {
 		return err
 	}
 
-	previous, err := GetPreviousDBVersion(cfg.MigrationsDir, current)
+	previous, err := GetPreviousDBVersion(p.GetMigrationsFS(), current)
 	if err != nil {
 		return err
 	}
 
-	if err := RunMigrations(ctx, cfg, cfg.MigrationsDir, previous); err != nil {
+	if err := p.RunMigrations(ctx, previous); err != nil {
 		return err
 	}
 
-	return RunMigrations(ctx, cfg, cfg.MigrationsDir, current)
+	return p.RunMigrations(ctx, current)
 }

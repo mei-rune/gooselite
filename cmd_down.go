@@ -14,19 +14,24 @@ func (c *DownCmd) Flags(fs *flag.FlagSet) *flag.FlagSet {
 }
 
 func (c *DownCmd) Run(args []string) error {
-	return Down(context.Background(), &c.cfg)
+	p, err := NewProvider(&c.cfg)
+	if err != nil {
+		return err
+	}
+	defer p.Close()
+	return p.Down(context.Background())
 }
 
-func Down(ctx context.Context, cfg *DBConfig) error {
-	current, err := GetDBVersion(cfg)
+func (p *Provider) Down(ctx context.Context) error {
+	current, err := p.GetDBVersion(ctx)
 	if err != nil {
 		return err
 	}
 
-	previous, err := GetPreviousDBVersion(cfg.MigrationsDir, current)
+	previous, err := GetPreviousDBVersion(p.GetMigrationsFS(), current)
 	if err != nil {
 		return err
 	}
 
-	return RunMigrations(ctx, cfg, cfg.MigrationsDir, previous)
+	return p.RunMigrations(ctx, previous)
 }
