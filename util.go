@@ -42,7 +42,7 @@ func IsTableAlreadyExists(err error) bool {
 }
 
 // TableNotExistKeys 表不存在的错误关键词
-var TableNotExistKeys = []string{"does not exist", "doesn't exist", "不存在"}
+var TableNotExistKeys = []string{"does not exist", "doesn't exist", "不存在", "no such table"}
 
 func IsTableNotExists(err error) bool {
 	if errors.Is(err, ErrTableDoesNotExist) {
