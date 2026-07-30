@@ -58,6 +58,8 @@ func splitSQLStatements(r io.Reader, direction bool, args map[string]interface{}
 
 	var buf bytes.Buffer
 	scanner := bufio.NewScanner(text)
+	maxSize := 8 * 1024 * 1024
+	scanner.Buffer(make([]byte, maxSize), maxSize)
 
 	// track the count of each section
 	// so we can diagnose scripts with no annotations
@@ -70,7 +72,12 @@ func splitSQLStatements(r io.Reader, direction bool, args map[string]interface{}
 
 	for scanner.Scan() {
 
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			if _, err := buf.WriteString("\n"); err != nil {
+				return nil, err
+			}
+		}
 
 		skipLine := false
 		// handle any goose-specific commands
@@ -114,6 +121,8 @@ func splitSQLStatements(r io.Reader, direction bool, args map[string]interface{}
 				skipLine = true
 				break
 			}
+		} else if strings.HasPrefix(line, "--") {
+			continue
 		}
 
 		if !directionIsActive {

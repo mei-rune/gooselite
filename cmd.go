@@ -109,7 +109,9 @@ func NewProvider(cfg *DBConfig, opts ...Option) (*Provider, error) {
 		p.args = make(map[string]string)
 	}
 	p.SetArg("driverName", p.cfg.DriverName)
+	p.SetArg("driver_name", p.cfg.DriverName)
 	p.SetArg("tableName", p.cfg.GetTableName())
+	p.SetArg("table_name", p.cfg.GetTableName())
 	return p, nil
 }
 
